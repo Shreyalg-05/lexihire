@@ -13,92 +13,65 @@ export default function Dashboard() {
   const [previewFile, setPreviewFile] = useState(null);
 
   /* ================= SEARCH ================= */
-  const handleSearch = () => {
-    const trimmedQuery = query.toLowerCase().trim();
+  const handleSearch = async () => {
+  try {
+    let url = "http://127.0.0.1:5000/search?";
 
-    if (uploadedFiles.length === 0) {
-      setSearchResults([]);
-      setSearchMessage("No resumes uploaded yet.");
-      return;
+    if (query) {
+      url += `skills=${encodeURIComponent(query)}&`;
     }
 
-    // Convert comma-separated skills properly
-    const skillKeywords = trimmedQuery
-      ? trimmedQuery
-          .split(",")
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0)
-      : [];
-
-    // Demo Resume Data
-    const enrichedResumes = uploadedFiles.map((file, index) => ({
-      id: index + 1,
-      name: "Candidate " + (index + 1),
-      email: "candidate" + (index + 1) + "@example.com",
-      skills: ["java", "react", "node.js", "sql", "spring boot"],
-      experience: 5, // numeric value
-      match: "85%",
-      url: file.url,
-    }));
-
-    const matched = enrichedResumes.filter((resume) => {
-      let skillMatch = true;
-      let experienceMatch = true;
-
-      /* ===== SKILL FILTER ===== */
-      if (skillKeywords.length > 0) {
-        const resumeSkillsLower = resume.skills.map((skill) =>
-          skill.toLowerCase()
-        );
-
-        // OR logic (any keyword matches)
-        skillMatch = skillKeywords.some((keyword) =>
-          resumeSkillsLower.some((skill) =>
-            skill.includes(keyword)
-          )
-        );
-      }
-
-      /* ===== EXPERIENCE FILTER ===== */
+    if (selectedExperience) {
       if (selectedExperience) {
-        const [minExp, maxExp] = selectedExperience
-          .split("-")
-          .map(Number);
-
-        if (maxExp === 20) {
-          // last range inclusive
-          experienceMatch =
-            resume.experience >= minExp &&
-            resume.experience <= maxExp;
-        } else {
-          // exclusive upper bound (prevents overlap)
-          experienceMatch =
-            resume.experience >= minExp &&
-            resume.experience < maxExp;
-        }
+        url += `experience=${selectedExperience}&`;
       }
+    }
 
-      return skillMatch && experienceMatch;
-    });
+    const response = await fetch(url);
+    const data = await response.json();
 
-    if (matched.length > 0) {
-      setSearchResults(matched);
-      setSearchMessage("");
+    if (response.ok) {
+      setSearchResults(data);
+      setSearchMessage(data.length === 0 ? "No matching results found." : "");
     } else {
       setSearchResults([]);
-      setSearchMessage("No matching results found.");
+      setSearchMessage("Search failed.");
     }
-  };
+
+  } catch (error) {
+    console.error(error);
+    setSearchMessage("Server error.");
+  }
+};
 
   /* ================= FILE UPLOAD ================= */
-  const handleFileUpload = (e) => {
-    const files = Array.from(e.target.files).map((file) => ({
-      name: file.name,
-      url: URL.createObjectURL(file),
-    }));
+  const handleFileUpload = async (e) => {
+  const files = Array.from(e.target.files);
 
-    setUploadedFiles((prev) => [...prev, ...files]);
-  };
+  const formData = new FormData();
+
+  files.forEach((file) => {
+    formData.append("resume", file);
+  });
+
+  try {
+    const response = await fetch("http://127.0.0.1:5000/resume/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      alert("Upload successful!");
+    } else {
+      alert("Upload failed");
+    }
+  } catch (error) {
+    console.error(error);
+    alert("Server error");
+  }
+};
 
   const deleteFile = (index) => {
     setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
@@ -216,21 +189,25 @@ export default function Dashboard() {
 
                   <tbody>
                     {searchResults.map((resume) => (
-                      <tr key={resume.id}>
-                        <td>{resume.id}</td>
-                        <td>{resume.name}</td>
-                        <td>{resume.email}</td>
-                        <td>{resume.match}</td>
+                      <tr key={resume.user_id}>
+                        <td>{resume.user_id}</td>
+                        <td>{resume.name || "N/A"}</td>
+                        <td>{resume.email || "N/A"}</td>
+                        <td>{resume.match_score}%</td>
                         <td>
-                          <button
-                            className="view-btn"
-                            onClick={() => setPreviewFile(resume.url)}
+                          <a
+                            href={`http://127.0.0.1:5000/${resume.resume_url}`}
+                            target="_blank"
+                            rel="noreferrer"
                           >
                             View
-                          </button>
+                          </a>
                         </td>
                         <td>
-                          <a href={resume.url} download>
+                          <a
+                            href={`http://127.0.0.1:5000/${resume.resume_url}`}
+                            download
+                          >
                             ⬇
                           </a>
                         </td>

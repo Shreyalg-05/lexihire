@@ -2,8 +2,7 @@ from flask import Flask, request, jsonify
 from engine.resume_engine import ResumeEngine
 from engine.search_engine import SearchEngine
 from engine.shortlist_engine import ShortlistEngine
-from engine.skill_engine import SkillEngine
-from engine.experience_engine import ExperienceEngine
+from flask import send_from_directory
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -13,6 +12,7 @@ CORS(app)
 
 @app.route("/resume/upload", methods=["POST"])
 def upload_resume():
+    print("UPLOAD ROUTE HIT")
     files = request.files.getlist("resume") or request.files.getlist("file")
 
     if not files:
@@ -33,7 +33,12 @@ def upload_resume():
 
 
 # ------------------ SEARCH ------------------
-
+@app.route('/uploads/resumes/<int:user_id>/<filename>')
+def serve_resume(user_id, filename):
+    return send_from_directory(
+        f"uploads/resumes/{user_id}",
+        filename
+    )
 @app.route("/search", methods=["GET"])
 def search():
     skills = request.args.get("skills")

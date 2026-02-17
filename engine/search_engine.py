@@ -11,6 +11,8 @@ class SearchEngine:
         base_sql = """
             SELECT 
                 u.id AS user_id,
+                u.name,
+                u.email,
                 u.skills,
                 u.experience,
                 u.metadata,
@@ -28,10 +30,16 @@ class SearchEngine:
             base_params.append(f"%{name}%")
 
         # 🔹 Experience filter
+        # 🔹 Experience filter (interval-based)
+        # 🔹 Experience filter (interval-based)
         if experience:
-            base_sql += " AND u.experience >= %s"
-            base_params.append(float(experience))
+            if "-" in experience:
+                min_exp, max_exp = experience.split("-")
+                min_exp = float(min_exp)
+                max_exp = float(max_exp)
 
+                base_sql += " AND u.experience >= %s AND u.experience < %s"
+                base_params.extend([min_exp, max_exp])
         results = []
 
         # ==========================
@@ -83,18 +91,34 @@ class SearchEngine:
     # ==========================
     # 🔥 TF-IDF RANKING
     # ==========================
-    import json
-
     @staticmethod
     def _rank(candidates, query):
-        if not candidates or not query:
+        if not candidates:
             return []
+
+        # If no skill query → return basic results
+        if not query:
+            for c in candidates:
+                c["match_score"] = 0
+
+                # remove internal columns
+                c.pop("skills", None)
+                c.pop("metadata", None)
+                c.pop("experience", None)
+
+            return candidates
 
         query_skills = {s.strip().lower() for s in query.split(",")}
         total_query = len(query_skills)
 
         for c in candidates:
-            metadata = json.loads(c.get("metadata", "{}"))
+            metadata_raw = c.get("metadata", "{}")
+
+            if isinstance(metadata_raw, str):
+                metadata = json.loads(metadata_raw)
+            else:
+                metadata = metadata_raw or {}
+
             skill_block = metadata.get("skills", {})
 
             candidate_skills = set(
@@ -105,25 +129,23 @@ class SearchEngine:
 
             candidate_skills = {s.lower() for s in candidate_skills}
 
-            # 🔥 Skill Match Calculation
             matched = len(query_skills & candidate_skills)
 
-            if total_query > 0:
-                skill_score = (matched / total_query) * 100
-            else:
-                skill_score = 0
+            skill_score = (matched / total_query) * 100 if total_query > 0 else 0
 
-            # 🔥 Experience Boost (Optional)
             experience = c.get("experience", 0)
-            experience_boost = min(experience * 2, 20)  # max 20% boost
+            experience_boost = min(experience * 2, 20)
 
             final_score = min(skill_score + experience_boost, 100)
 
             c["match_score"] = round(final_score, 2)
 
-            # Remove internal columns
+            # 🔥 Remove internal fields before sending to frontend
             c.pop("skills", None)
             c.pop("metadata", None)
+            c.pop("experience", None)
 
         return sorted(candidates, key=lambda x: x["match_score"], reverse=True)
+
+
 
