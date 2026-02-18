@@ -18,18 +18,18 @@ class ResumeEngine:
         conn = Database.get_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # 1️⃣ Save file temporarily first
         filename = secure_filename(file.filename)
-        temp_path = os.path.join(UPLOAD_FOLDER, filename)
+
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        temp_path = os.path.join(UPLOAD_FOLDER, filename)
         file.save(temp_path)
 
-        # 2️⃣ Extract resume content
+        # ==============================
+        # TEXT EXTRACTION
+        # ==============================
         raw_text = extract_full_text(temp_path)
-
         raw_text = (
-            raw_text
-            .replace("\u2010", "-")
+            raw_text.replace("\u2010", "-")
             .replace("\u2011", "-")
             .replace("\u2013", "-")
         )
@@ -42,25 +42,34 @@ class ResumeEngine:
             SkillEngine.normalize_broken_text(raw_text)
         )
 
-        # 3️⃣ Extract header (to detect duplicates)
+        # ==============================
+        # HEADER EXTRACTION
+        # ==============================
         header = SkillEngine._extract_header(full_text)
         email = header.get("email")
-        phone = header.get("phone")
-        phone = str(phone) if phone else None
+
+        phone_match = header.get("phone")
+        phone = None
+        if phone_match:
+            phone = "".join(phone_match)  # flatten tuple
 
         if not email:
             cursor.close()
             conn.close()
-            return {"error": "Email not found in resume. Cannot process."}
+            return {"error": "Email not found in resume."}
 
-        # 4️⃣ Check if user already exists
+        # ==============================
+        # CHECK DUPLICATE BY EMAIL
+        # ==============================
         cursor.execute(
             "SELECT id FROM user_details WHERE email = %s",
             (email,)
         )
         existing_user = cursor.fetchone()
 
-        # 5️⃣ Extract rest of data
+        # ==============================
+        # EXTRACT OTHER FIELDS
+        # ==============================
         name = SkillEngine._extract_name_from_text(full_text)
 
         exp_block = SkillEngine._extract_section(full_text, "experience") or ""
@@ -77,17 +86,14 @@ class ResumeEngine:
             skills_list,
             header_override={"name": name}
         )
-
         metadata_json = json.dumps(metadata_dict)
 
         # ==============================
-        # 🔥 UPDATE OR INSERT LOGIC
+        # INSERT OR UPDATE
         # ==============================
-
         if existing_user:
             user_id = existing_user["id"]
 
-            # overwrite resume file location
             user_folder = os.path.join(UPLOAD_FOLDER, str(user_id))
             os.makedirs(user_folder, exist_ok=True)
 
@@ -98,7 +104,6 @@ class ResumeEngine:
 
             os.replace(temp_path, final_path)
 
-            # update DB
             cursor.execute("""
                            UPDATE user_details
                            SET name=%s,
@@ -107,22 +112,22 @@ class ResumeEngine:
                                skills=%s,
                                experience=%s,
                                metadata=%s
-                           WHERE id=%s
+                           WHERE id = %s
                            """, (name, email, phone, skills, experience, metadata_json, user_id))
 
             cursor.execute("""
                            UPDATE resume_details
                            SET resume_url=%s
                            WHERE user_id = %s
-                           """, (final_path, user_id))
+                           """, (filename, user_id))
 
             message = "Resume updated successfully"
 
         else:
-            # insert new user
             cursor.execute("""
-                           INSERT INTO user_details(name, email, phone_number, skills, experience, metadata)
-                            VALUES (%s, %s, %s, %s, %s, %s)
+                           INSERT INTO user_details
+                               (name, email, phone_number, skills, experience, metadata)
+                           VALUES (%s, %s, %s, %s, %s, %s)
                            """, (name, email, phone, skills, experience, metadata_json))
 
             user_id = cursor.lastrowid
@@ -136,7 +141,7 @@ class ResumeEngine:
             cursor.execute("""
                            INSERT INTO resume_details (user_id, resume_url)
                            VALUES (%s, %s)
-                           """, (user_id, final_path))
+                           """, (user_id, filename))
 
             message = "Resume uploaded successfully"
 
@@ -147,8 +152,9 @@ class ResumeEngine:
         return {
             "message": message,
             "user_id": user_id,
-            "resume_path": final_path
+            "resume_filename": filename
         }
+
 
 
 

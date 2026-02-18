@@ -1,5 +1,7 @@
 from db.database import Database
 import json
+import os
+
 
 class SearchEngine:
 
@@ -9,7 +11,7 @@ class SearchEngine:
         cursor = conn.cursor(dictionary=True)
 
         base_sql = """
-            SELECT 
+            SELECT  
                 u.id AS user_id,
                 u.name,
                 u.email,
@@ -29,21 +31,19 @@ class SearchEngine:
             base_sql += " AND u.name LIKE %s"
             base_params.append(f"%{name}%")
 
-        # 🔹 Experience filter
-        # 🔹 Experience filter (interval-based)
-        # 🔹 Experience filter (interval-based)
-        if experience:
-            if "-" in experience:
-                min_exp, max_exp = experience.split("-")
-                min_exp = float(min_exp)
-                max_exp = float(max_exp)
+        # 🔹 Experience filter (interval-based: 3-5 → >=3 AND <5)
+        if experience and "-" in experience:
+            min_exp, max_exp = experience.split("-")
+            min_exp = float(min_exp)
+            max_exp = float(max_exp)
 
-                base_sql += " AND u.experience >= %s AND u.experience < %s"
-                base_params.extend([min_exp, max_exp])
+            base_sql += " AND u.experience >= %s AND u.experience < %s"
+            base_params.extend([min_exp, max_exp])
+
         results = []
 
         # ==========================
-        # 1️⃣ SEARCH IN SKILLS
+        # 1️⃣ SEARCH IN SKILLS COLUMN
         # ==========================
         if skills:
             skill_list = [s.strip().lower() for s in skills.split(",")]
@@ -51,13 +51,10 @@ class SearchEngine:
             params = base_params.copy()
 
             for skill in skill_list:
-                skill_conditions.append("u.skills LIKE %s")
+                skill_conditions.append("LOWER(u.skills) LIKE %s")
                 params.append(f"%{skill}%")
 
-            skills_sql = (
-                base_sql
-                + " AND (" + " OR ".join(skill_conditions) + ")"
-            )
+            skills_sql = base_sql + " AND (" + " OR ".join(skill_conditions) + ")"
 
             cursor.execute(skills_sql, params)
             results = cursor.fetchall()
@@ -75,10 +72,7 @@ class SearchEngine:
                 )
                 params.append(skill.strip().lower())
 
-            metadata_sql = (
-                base_sql
-                + " AND (" + " OR ".join(metadata_conditions) + ")"
-            )
+            metadata_sql = base_sql + " AND (" + " OR ".join(metadata_conditions) + ")"
 
             cursor.execute(metadata_sql, params)
             results = cursor.fetchall()
@@ -89,19 +83,24 @@ class SearchEngine:
         return SearchEngine._rank(results, skills)
 
     # ==========================
-    # 🔥 TF-IDF RANKING
+    # 🔥 RANKING FUNCTION
     # ==========================
     @staticmethod
     def _rank(candidates, query):
+
         if not candidates:
             return []
 
-        # If no skill query → return basic results
+        # 🔹 If no skill query → return basic results
         if not query:
             for c in candidates:
                 c["match_score"] = 0
 
-                # remove internal columns
+                # Extract only filename for frontend
+                if c.get("resume_url"):
+                    c["resume_url"] = os.path.basename(c["resume_url"])
+
+                # Remove internal fields
                 c.pop("skills", None)
                 c.pop("metadata", None)
                 c.pop("experience", None)
@@ -112,6 +111,8 @@ class SearchEngine:
         total_query = len(query_skills)
 
         for c in candidates:
+
+            # Parse metadata safely
             metadata_raw = c.get("metadata", "{}")
 
             if isinstance(metadata_raw, str):
@@ -129,10 +130,11 @@ class SearchEngine:
 
             candidate_skills = {s.lower() for s in candidate_skills}
 
+            # 🔥 Skill match score
             matched = len(query_skills & candidate_skills)
-
             skill_score = (matched / total_query) * 100 if total_query > 0 else 0
 
+            # 🔥 Experience boost (max 20%)
             experience = c.get("experience", 0)
             experience_boost = min(experience * 2, 20)
 
@@ -140,12 +142,13 @@ class SearchEngine:
 
             c["match_score"] = round(final_score, 2)
 
-            # 🔥 Remove internal fields before sending to frontend
+            # 🔥 IMPORTANT → Fix resume filename
+            if c.get("resume_url"):
+                c["resume_url"] = os.path.basename(c["resume_url"])
+
+            # Remove internal fields before sending to frontend
             c.pop("skills", None)
             c.pop("metadata", None)
             c.pop("experience", None)
 
         return sorted(candidates, key=lambda x: x["match_score"], reverse=True)
-
-
-

@@ -5,76 +5,68 @@ export default function Dashboard() {
   const [activePage, setActivePage] = useState("dashboard");
   const [query, setQuery] = useState("");
   const [selectedExperience, setSelectedExperience] = useState("");
-
   const [searchResults, setSearchResults] = useState([]);
   const [searchMessage, setSearchMessage] = useState("");
-
-  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [previewFile, setPreviewFile] = useState(null);
 
   /* ================= SEARCH ================= */
   const handleSearch = async () => {
-  try {
-    let url = "http://127.0.0.1:5000/search?";
+    try {
+      let url = "http://127.0.0.1:5000/search?";
 
-    if (query) {
-      url += `skills=${encodeURIComponent(query)}&`;
-    }
+      if (query) {
+        url += `skills=${encodeURIComponent(query)}&`;
+      }
 
-    if (selectedExperience) {
       if (selectedExperience) {
         url += `experience=${selectedExperience}&`;
       }
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (response.ok) {
+        setSearchResults(data);
+        setSearchMessage(
+          data.length === 0 ? "No matching results found." : ""
+        );
+      } else {
+        setSearchResults([]);
+        setSearchMessage("Search failed.");
+      }
+    } catch (error) {
+      console.error(error);
+      setSearchMessage("Server error.");
     }
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (response.ok) {
-      setSearchResults(data);
-      setSearchMessage(data.length === 0 ? "No matching results found." : "");
-    } else {
-      setSearchResults([]);
-      setSearchMessage("Search failed.");
-    }
-
-  } catch (error) {
-    console.error(error);
-    setSearchMessage("Server error.");
-  }
-};
+  };
 
   /* ================= FILE UPLOAD ================= */
   const handleFileUpload = async (e) => {
-  const files = Array.from(e.target.files);
+    const files = Array.from(e.target.files);
+    const formData = new FormData();
 
-  const formData = new FormData();
-
-  files.forEach((file) => {
-    formData.append("resume", file);
-  });
-
-  try {
-    const response = await fetch("http://127.0.0.1:5000/resume/upload", {
-      method: "POST",
-      body: formData,
+    files.forEach((file) => {
+      formData.append("resume", file);
     });
 
-    const data = await response.json();
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:5000/resume/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
-    if (response.ok) {
-      alert("Upload successful!");
-    } else {
-      alert("Upload failed");
+      if (response.ok) {
+        alert("Upload successful!");
+      } else {
+        alert("Upload failed");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Server error");
     }
-  } catch (error) {
-    console.error(error);
-    alert("Server error");
-  }
-};
-
-  const deleteFile = (index) => {
-    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -84,7 +76,11 @@ export default function Dashboard() {
 
         <div className="top-nav">
           <button
-            className={activePage === "dashboard" ? "nav-btn active" : "nav-btn"}
+            className={
+              activePage === "dashboard"
+                ? "nav-btn active"
+                : "nav-btn"
+            }
             onClick={() => {
               setActivePage("dashboard");
               setSearchResults([]);
@@ -95,7 +91,11 @@ export default function Dashboard() {
           </button>
 
           <button
-            className={activePage === "upload" ? "nav-btn active" : "nav-btn"}
+            className={
+              activePage === "upload"
+                ? "nav-btn active"
+                : "nav-btn"
+            }
             onClick={() => setActivePage("upload")}
           >
             Upload Resumes
@@ -114,12 +114,8 @@ export default function Dashboard() {
       </header>
 
       <main className="dashboard-content">
+        {/* ================= STATS ================= */}
         <div className="dashboard-stats">
-          <div className="stat-card">
-            <h4>Total Resumes</h4>
-            <p>{uploadedFiles.length}</p>
-          </div>
-
           <div className="stat-card">
             <h4>Last Search</h4>
             <p>{query || "—"}</p>
@@ -131,23 +127,30 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* ================= DASHBOARD PAGE ================= */}
         {activePage === "dashboard" && (
           <>
             <div className="query-box">
-              <p className="query-hint">👋 Enter your hiring requirement</p>
+              <p className="query-hint">
+                👋 Enter your hiring requirement
+              </p>
 
               <div className="query-input">
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && handleSearch()
+                  }
                   placeholder="Type skills (comma separated)"
                 />
 
                 <select
                   className="experience-dropdown"
                   value={selectedExperience}
-                  onChange={(e) => setSelectedExperience(e.target.value)}
+                  onChange={(e) =>
+                    setSelectedExperience(e.target.value)
+                  }
                 >
                   <option value="">Experience</option>
                   <option value="0-1">0 - 1 years</option>
@@ -160,20 +163,23 @@ export default function Dashboard() {
                   <option value="15-20">15 - 20 years</option>
                 </select>
 
-                <button onClick={handleSearch}>Search</button>
+                <button onClick={handleSearch}>
+                  Search
+                </button>
               </div>
             </div>
 
             {searchMessage && (
               <div className="empty-state">
                 <h3>{searchMessage}</h3>
-                <p>Try refining your search or upload resumes first.</p>
               </div>
             )}
 
             {searchResults.length > 0 && (
               <div className="results">
-                <h3 className="table-title">Shortlisted Candidates</h3>
+                <h3 className="table-title">
+                  Matched Resumes
+                </h3>
 
                 <table className="compact-table">
                   <thead>
@@ -191,22 +197,28 @@ export default function Dashboard() {
                     {searchResults.map((resume) => (
                       <tr key={resume.user_id}>
                         <td>{resume.user_id}</td>
-                        <td>{resume.name || "N/A"}</td>
-                        <td>{resume.email || "N/A"}</td>
+                        <td>{resume.name}</td>
+                        <td>{resume.email}</td>
                         <td>{resume.match_score}%</td>
+
+                        {/* VIEW IN SAME PAGE */}
                         <td>
-                          <a
-                            href={`http://127.0.0.1:5000/${resume.resume_url}`}
-                            target="_blank"
-                            rel="noreferrer"
+                          <button
+                            className="view-btn"
+                            onClick={() =>
+                              setPreviewFile(
+                                `http://127.0.0.1:5000/resume/view/${resume.user_id}/${resume.resume_url}`
+                              )
+                            }
                           >
                             View
-                          </a>
+                          </button>
                         </td>
+
+                        {/* FORCE DOWNLOAD */}
                         <td>
                           <a
-                            href={`http://127.0.0.1:5000/${resume.resume_url}`}
-                            download
+                            href={`http://127.0.0.1:5000/resume/download/${resume.user_id}/${resume.resume_url}`}
                           >
                             ⬇
                           </a>
@@ -220,6 +232,7 @@ export default function Dashboard() {
           </>
         )}
 
+        {/* ================= UPLOAD PAGE ================= */}
         {activePage === "upload" && (
           <div className="upload-section">
             <input
@@ -230,63 +243,25 @@ export default function Dashboard() {
               id="uploadInput"
               onChange={handleFileUpload}
             />
-
-            <label htmlFor="uploadInput" className="upload-btn">
+            <label
+              htmlFor="uploadInput"
+              className="upload-btn"
+            >
               📄 Upload Resumes
             </label>
-
-            {uploadedFiles.length === 0 ? (
-              <h2 className="upload-empty">No resumes uploaded yet !!</h2>
-            ) : (
-              <div className="table-wrapper">
-                <h3 className="table-title-left">Uploaded Resumes</h3>
-
-                <table className="upload-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>File Name</th>
-                      <th>View</th>
-                      <th>Delete</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {uploadedFiles.map((file, index) => (
-                      <tr key={index}>
-                        <td>{index + 1}</td>
-                        <td>{file.name}</td>
-                        <td>
-                          <button
-                            className="view-btn"
-                            onClick={() => setPreviewFile(file.url)}
-                          >
-                            View
-                          </button>
-                        </td>
-                        <td>
-                          <button
-                            className="icon-btn"
-                            onClick={() => deleteFile(index)}
-                          >
-                            🗑
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
         )}
       </main>
 
+      {/* ================= MODAL ================= */}
       {previewFile && (
         <div className="modal-overlay">
           <div className="modal-content large-preview">
             <div className="modal-header">
               <span>Resume Preview</span>
-              <button onClick={() => setPreviewFile(null)}>✖</button>
+              <button onClick={() => setPreviewFile(null)}>
+                ✖
+              </button>
             </div>
 
             <iframe
