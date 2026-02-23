@@ -1,56 +1,136 @@
 import Navbar from "../components/Navbar";
+import { motion } from "framer-motion";
 import "../styles/home.css";
+import aboutBg from "../assets/about-bg.jpeg";
 
 export default function About() {
   return (
     <>
       <Navbar />
 
-      {/* ================= ABOUT HEADER ================= */}
-      <section className="about-hero">
-        <div className="about-hero-inner">
-          <h1>About LexiHire</h1>
+      {/* ================= HERO ================= */}
+
+      <section
+        className="about-hero"
+        style={{ backgroundImage: `url(${aboutBg})` }}
+      >
+        <div className="about-hero-overlay"></div>
+
+        <div className="about-hero-content">
+          <h1>
+            Building the Future of <span>AI Hiring</span>
+          </h1>
           <p>
-            A role-based resume processing and hiring system built for
-            organizations managing large volumes of candidate applications.
+            LexiHire transforms resume screening into a transparent,
+            structured and intelligent hiring experience.
           </p>
         </div>
       </section>
 
-      {/* ================= ABOUT CONTENT ================= */}
-      <section className="about-content">
+      {/* ================= MISSION ================= */}
+
+      <section className="about-section about-light">
+
         <div className="about-container">
-          <h3>What LexiHire Does</h3>
-          <p>
-            LexiHire enables candidates to securely upload resumes while HR teams
-            search, rank, shortlist, and download resumes using natural language
-            queries. The system is designed to reduce manual screening effort and
-            improve consistency in candidate evaluation.
-          </p>
 
-          <h3>Designed for Enterprise Workflows</h3>
-          <p>
-            The platform enforces clear role separation between candidates and
-            hiring teams, ensuring that access to data and actions is controlled
-            and auditable. All resume interactions are tracked to support
-            accountability and compliance requirements.
-          </p>
+          <motion.div
+            className="about-text-block"
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            viewport={{ once: true }}
+          >
+            <h2>Our Mission</h2>
+            <p>
+              Reduce manual screening effort while improving fairness,
+              transparency and scalability in enterprise hiring.
+            </p>
+          </motion.div>
 
-          <h3>Focus on Transparency and Control</h3>
-          <p>
-            LexiHire provides transparent, ranked search results to help hiring
-            teams understand why candidates surface for specific queries. This
-            approach supports fairer decision-making and improves trust in the
-            shortlisting process.
-          </p>
-          <h3>Core Principles</h3>
-            <ul className="about-list">
-             <li>Role-based access control for candidates and HR teams</li>
-             <li>Audit-friendly workflows with traceable actions</li>
-             <li>Transparent, ranked resume search results</li>
-             <li>Designed for high-volume, enterprise hiring pipelines</li>
-            </ul>
         </div>
+      </section>
+
+      {/* ================= WHY LEXIHIRE ================= */}
+
+      <section className="about-section about-gradient">
+
+        <div className="about-container grid-2">
+
+          <div>
+            <h2>Why LexiHire?</h2>
+            <p>
+              Traditional resume screening is manual, inconsistent,
+              and difficult to scale. LexiHire uses AI-driven ranking,
+              structured workflows and audit-friendly systems
+              to modernize enterprise recruitment.
+            </p>
+          </div>
+
+          <div className="about-highlight-card">
+            <h3>Designed for HR Teams</h3>
+            <ul>
+              <li>Structured candidate scoring</li>
+              <li>Natural language search</li>
+              <li>Secure role-based access</li>
+              <li>Enterprise-level scalability</li>
+            </ul>
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* ================= PRINCIPLES ================= */}
+
+      <section className="about-section about-light">
+
+        <div className="about-container grid-3">
+
+          {[
+            ["🔐", "Security First"],
+            ["⚙️", "Structured Workflows"],
+            ["📊", "Transparent Ranking"]
+          ].map((item, index) => (
+            <motion.div
+              key={index}
+              className="about-mini-card"
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: index * 0.2 }}
+              viewport={{ once: true }}
+            >
+              <div className="about-icon">{item[0]}</div>
+              <h4>{item[1]}</h4>
+            </motion.div>
+          ))}
+
+        </div>
+
+      </section>
+
+      {/* ================= STATS ================= */}
+
+      <section className="about-section about-dark">
+
+        <div className="about-container grid-3 center-text">
+
+          <div>
+            <h2>10K+</h2>
+            <p>Resumes Processed</p>
+          </div>
+
+          <div>
+            <h2>95%</h2>
+            <p>Search Accuracy</p>
+          </div>
+
+          <div>
+            <h2>50+</h2>
+            <p>Enterprise Clients</p>
+          </div>
+
+        </div>
+
       </section>
 
       <footer className="footer">

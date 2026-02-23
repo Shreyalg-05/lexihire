@@ -1,118 +1,246 @@
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
 import "../styles/home.css";
+import Lottie from "lottie-react";
+
+import hiringWorkflowAnimation from "../assets/hiring-workflow.json";
+import profileCardAnimation from "../assets/ProfileUserCard.json";
 
 export default function Home() {
   return (
     <>
       <Navbar />
 
-      {/* ================= HERO ================= */}
+      {/* ================= HERO SECTION ================= */}
+
       <section className="hero-modern">
-        <div className="hero-content">
-          <h1>
-            Intelligent <span>Resume Search</span> <br />
-            Built for Modern Hiring
-          </h1>
+        <div className="hero-container">
 
-          <p>
-            Upload resumes, search using natural language, and
-            shortlist candidates instantly with AI-powered ranking.
-          </p>
+          <motion.div
+            className="hero-left"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="hero-badge-modern">
+              AI Powered Resume Intelligence
+            </div>
 
-          <div className="hero-buttons">
-            <Link to="/login" className="btn-primary">
-              Get Started
+            <h1>
+              Find the Right Talent <br />
+              <span>Faster & Smarter</span>
+            </h1>
+
+            <p>
+              Transform resume screening with AI-driven ranking,
+              structured filtering, and enterprise-ready workflows.
+            </p>
+
+            <div className="hero-buttons">
+              <Link to="/login" className="btn-primary-modern">
+                Get Started
+              </Link>
+
+              <Link to="/how-it-works" className="btn-secondary-modern">
+                See How It Works
+              </Link>
+            </div>
+          </motion.div>
+
+          <motion.div
+            className="hero-search-card"
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1 }}
+          >
+            <h3>Quick Candidate Search</h3>
+
+            <input
+              type="text"
+              placeholder="e.g. 5 years React + Node"
+            />
+
+            <select>
+              <option>Experience Level</option>
+              <option>0-2 Years</option>
+              <option>3-5 Years</option>
+              <option>5+ Years</option>
+            </select>
+
+            <button className="search-btn-modern">
+              Search Candidates
+            </button>
+          </motion.div>
+
+        </div>
+      </section>
+
+      {/* ================= AI ENGINE SECTION ================= */}
+
+      <section className="workflow-animated-section section-white">
+
+        <div className="workflow-animated-container">
+
+          <div className="workflow-text">
+            <h2>
+              AI Powered <span>Recruitment Engine</span>
+            </h2>
+
+            <p>
+              Automate resume parsing, skill extraction and candidate ranking
+              using advanced NLP models built for modern HR teams.
+            </p>
+
+            <ul>
+              <li>✔ Resume Upload & Parsing</li>
+              <li>✔ Smart Skill Extraction</li>
+              <li>✔ AI-Based Ranking</li>
+              <li>✔ Instant Shortlisting</li>
+            </ul>
+          </div>
+
+          <div className="workflow-animation">
+            <Lottie
+              animationData={hiringWorkflowAnimation}
+              loop
+              style={{ height: 420 }}
+            />
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* ================= CANDIDATE PROFILES SECTION ================= */}
+
+      <section className="candidate-preview-section section-blue">
+
+        <div className="candidate-preview-container">
+
+          <div className="candidate-animation">
+            <Lottie
+              animationData={profileCardAnimation}
+              loop
+              style={{ height: 420 }}
+            />
+          </div>
+
+          <div className="candidate-text">
+            <h2>
+              Structured <span>Candidate Profiles</span>
+            </h2>
+
+            <p>
+              Every resume is converted into a structured candidate card,
+              making it easy for HR teams to compare, filter and shortlist instantly.
+            </p>
+
+            <Link to="/login" className="btn-primary-modern">
+              Start Screening
             </Link>
-
-            <Link to="/about" className="btn-secondary">
-              Learn More
-            </Link>
           </div>
 
-          <div className="hero-stats">
-            <div>
-              <h3>10K+</h3>
-              <p>Resumes Processed</p>
-            </div>
-            <div>
-              <h3>95%</h3>
-              <p>Search Accuracy</p>
-            </div>
-            <div>
-              <h3>50+</h3>
-              <p>Enterprise Teams</p>
-            </div>
-          </div>
         </div>
 
-        {/* RIGHT SIDE MOCK DASHBOARD */}
-        <div className="hero-visual">
-          <div className="mock-card large">
-            <h4>Search Query</h4>
-            <p>“5 years Java developer with Spring Boot”</p>
+      </section>
+
+      {/* ================= FEATURES SECTION ================= */}
+
+      <section className="feature-preview section-white">
+
+        <div className="feature-container">
+
+          <div className="feature-text">
+            <h2>
+              Built for Modern <span>HR Teams</span>
+            </h2>
+
+            <p>
+              From intelligent parsing to ranked search results,
+              LexiHire streamlines every step of your hiring workflow.
+            </p>
           </div>
 
-          <div className="mock-card small">
-            <h4>Top Match</h4>
-            <p>John Doe — 85%</p>
+          <div className="feature-cards">
+            <div className="feature-card">
+              🔍 Ranked Resume Search
+            </div>
+
+            <div className="feature-card">
+              📊 AI Skill Extraction
+            </div>
+
+            <div className="feature-card">
+              🔐 Secure Role Access
+            </div>
+
+            <div className="feature-card">
+              ⚡ Fast Shortlisting
+            </div>
           </div>
 
-          <div className="mock-card accent">
-            <h4>Shortlisted</h4>
-            <p>12 Candidates</p>
-          </div>
         </div>
+
       </section>
+      <section className="trusted-section section-white">
+  <div className="trusted-container">
+    <p className="trusted-label">
+      Trusted by modern HR teams
+    </p>
 
-      {/* ================= FEATURES ================= */}
-      <section className="features-section">
-        <h2>Why LexiHire?</h2>
+    <div className="trusted-logos">
+      <div>ACME Corp</div>
+      <div>GlobalTech</div>
+      <div>HireSphere</div>
+      <div>TalentGrid</div>
+      <div>WorkNova</div>
+    </div>
+  </div>
+</section>
+<section className="metrics-section section-blue">
+  <div className="metrics-container">
 
-        <div className="features-grid">
-          <div className="feature-card">
-            <h3>Natural Language Search</h3>
-            <p>
-              Search resumes using plain English instead of complex filters.
-            </p>
-          </div>
+    <div className="metric-item">
+      <h3>10K+</h3>
+      <p>Resumes Processed</p>
+    </div>
 
-          <div className="feature-card">
-            <h3>Role-Based Access</h3>
-            <p>
-              Secure workflows for candidates and HR teams.
-            </p>
-          </div>
+    <div className="metric-item">
+      <h3>95%</h3>
+      <p>Matching Accuracy</p>
+    </div>
 
-          <div className="feature-card">
-            <h3>Smart Ranking</h3>
-            <p>
-              AI-powered relevance scoring to reduce screening time.
-            </p>
-          </div>
+    <div className="metric-item">
+      <h3>60%</h3>
+      <p>Faster Shortlisting</p>
+    </div>
 
-          <div className="feature-card">
-            <h3>Audit-Friendly</h3>
-            <p>
-              Trackable resume interactions for compliance and transparency.
-            </p>
-          </div>
-        </div>
-      </section>
+  </div>
+</section>
+<section className="cta-section">
+  <div className="cta-container">
+    <h2>
+      Ready to Transform <span>Your Hiring?</span>
+    </h2>
 
-      {/* ================= CTA ================= */}
-      <section className="cta-section">
-        <h2>Transform Your Hiring Workflow</h2>
-        <p>Start using LexiHire today and hire faster with confidence.</p>
+    <p>
+      Start using AI-powered resume intelligence today.
+    </p>
 
-        <Link to="/login" className="btn-primary">
-          Access Dashboard
-        </Link>
-      </section>
+    <Link to="/login" className="btn-primary-modern">
+      Get Started Now
+    </Link>
+  </div>
+</section>
+
+
+      {/* ================= FOOTER ================= */}
 
       <footer className="footer">
         © 2026 LexiHire. All rights reserved.
       </footer>
+
     </>
   );
 }

@@ -1,30 +1,32 @@
 import { Link, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import "../styles/home.css";
 
-export default function Navbar({ onLoginClick }) {
+export default function Navbar() {
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
 
-  useEffect(() => {
-    const pill = document.querySelector(".navbar-pill");
-    if (!pill) return;
+  const [scrolled, setScrolled] = useState(false);
 
-    const onScroll = () => {
-      if (window.scrollY > 20) {
-        pill.classList.add("scrolled");
-      } else {
-        pill.classList.remove("scrolled");
-      }
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 40);
     };
 
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
-    <header className="navbar-wrapper">
-      <div className="navbar-pill">
+    <motion.header
+      className="navbar-wrapper"
+      initial={{ y: -80, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6 }}
+    >
+      <div className={`navbar-pill ${scrolled ? "navbar-scrolled" : ""}`}>
+
         <div className="logo">
           <Link to="/">LexiHire</Link>
         </div>
@@ -33,12 +35,14 @@ export default function Navbar({ onLoginClick }) {
           <Link to="/" className={isActive("/") ? "active-link" : ""}>
             Home
           </Link>
+
           <Link
             to="/how-it-works"
             className={isActive("/how-it-works") ? "active-link" : ""}
           >
             How it works
           </Link>
+
           <Link
             to="/about"
             className={isActive("/about") ? "active-link" : ""}
@@ -50,7 +54,8 @@ export default function Navbar({ onLoginClick }) {
             Login
           </Link>
         </nav>
+
       </div>
-    </header>
+    </motion.header>
   );
 }
