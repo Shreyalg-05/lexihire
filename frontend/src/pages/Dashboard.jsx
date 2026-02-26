@@ -1,274 +1,256 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import "../styles/dashboard.css";
+import heroBg from "../assets/dash-bg.jpg";
 
 export default function Dashboard() {
-  const [activePage, setActivePage] = useState("dashboard");
   const [query, setQuery] = useState("");
   const [selectedExperience, setSelectedExperience] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
   const [searchMessage, setSearchMessage] = useState("");
   const [previewFile, setPreviewFile] = useState(null);
+  const [animatedCount, setAnimatedCount] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
 
-  /* ================= SEARCH ================= */
-  const handleSearch = async () => {
-    try {
-      let url = "http://127.0.0.1:5000/search?";
+  const fileInputRef = useRef();
 
-      if (query) {
-        url += `skills=${encodeURIComponent(query)}&`;
-      }
+  /* ================= STICKY NAV ================= */
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 40);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-      if (selectedExperience) {
-        url += `experience=${selectedExperience}&`;
-      }
+  /* ================= ANIMATED COUNTER ================= */
+  useEffect(() => {
+    let start = 0;
+    const end = searchResults.length;
+    if (end === 0) return;
 
-      const response = await fetch(url);
-      const data = await response.json();
+    const duration = 600;
+    const increment = end / (duration / 16);
 
-      if (response.ok) {
-        setSearchResults(data);
-        setSearchMessage(
-          data.length === 0 ? "No matching results found." : ""
-        );
+    const counter = setInterval(() => {
+      start += increment;
+      if (start >= end) {
+        setAnimatedCount(end);
+        clearInterval(counter);
       } else {
-        setSearchResults([]);
-        setSearchMessage("Search failed.");
+        setAnimatedCount(Math.ceil(start));
       }
-    } catch (error) {
-      console.error(error);
-      setSearchMessage("Server error.");
-    }
+    }, 16);
+
+    return () => clearInterval(counter);
+  }, [searchResults]);
+
+  /* ================= EXPERIENCE MATCH ================= */
+  const matchExperience = (resumeExp, selectedRange) => {
+    if (!selectedRange) return true;
+    const [min, max] = selectedRange.split("-").map(Number);
+    if (max) return resumeExp >= min && resumeExp < max;
+    return resumeExp >= min;
   };
 
-  /* ================= FILE UPLOAD ================= */
-  const handleFileUpload = async (e) => {
+  /* ================= SKILL MATCH ================= */
+  const matchSkills = (resumeSkills, inputSkills) => {
+    if (inputSkills.length === 0) return true;
+    return inputSkills.every((skill) =>
+      resumeSkills.includes(skill)
+    );
+  };
+
+  /* ================= UPLOAD ================= */
+  const handleUpload = (e) => {
     const files = Array.from(e.target.files);
-    const formData = new FormData();
 
-    files.forEach((file) => {
-      formData.append("resume", file);
-    });
+    const newResumes = files.map((file, index) => ({
+      user_id: Date.now() + index,
+      name: file.name.replace(".pdf", ""),
+      email: `${file.name.split(".")[0]}@gmail.com`,
+      skills: ["react", "node"], // simulated skills
+      experience: Math.floor(Math.random() * 10) + 1,
+      match_score: Math.floor(Math.random() * 40) + 60,
+      fileURL: URL.createObjectURL(file),
+    }));
 
-    try {
-      const response = await fetch(
-        "http://127.0.0.1:5000/resume/upload",
-        {
-          method: "POST",
-          body: formData,
-        }
+    setUploadedFiles((prev) => [...prev, ...newResumes]);
+  };
+
+  /* ================= SEARCH ================= */
+  const handleSearch = () => {
+    if (uploadedFiles.length === 0) {
+      setSearchResults([]);
+      setSearchMessage("No resumes uploaded yet.");
+      return;
+    }
+
+    const inputSkills = query
+      .toLowerCase()
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const filtered = uploadedFiles.filter((resume) => {
+      const skillMatch = matchSkills(resume.skills, inputSkills);
+      const experienceMatch = matchExperience(
+        resume.experience,
+        selectedExperience
       );
 
-      if (response.ok) {
-        alert("Upload successful!");
-      } else {
-        alert("Upload failed");
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Server error");
+      if (inputSkills.length > 0 && selectedExperience)
+        return skillMatch && experienceMatch;
+
+      if (inputSkills.length > 0) return skillMatch;
+
+      if (selectedExperience) return experienceMatch;
+
+      return false;
+    });
+
+    if (filtered.length === 0) {
+      setSearchResults([]);
+      setSearchMessage("No matching results found.");
+    } else {
+      setSearchResults(filtered);
+      setSearchMessage("");
     }
   };
 
   return (
-    <div className="dashboard-body">
-      <header className="top-header">
-        <h1 className="brand-title">LEXIHIRE</h1>
+    <div className="dashboard-wrapper">
 
-        <div className="top-nav">
-          <button
-            className={
-              activePage === "dashboard"
-                ? "nav-btn active"
-                : "nav-btn"
-            }
-            onClick={() => {
-              setActivePage("dashboard");
-              setSearchResults([]);
-              setSearchMessage("");
-            }}
-          >
-            Dashboard
+      {/* ================= NAVBAR ================= */}
+      <nav className={`floating-nav ${scrolled ? "nav-scrolled" : ""}`}>
+        <div className="nav-brand">LEXIHIRE</div>
+
+        <div className="nav-links">
+          <button>Dashboard</button>
+
+          <button onClick={() => fileInputRef.current.click()}>
+            Upload
           </button>
 
-          <button
-            className={
-              activePage === "upload"
-                ? "nav-btn active"
-                : "nav-btn"
-            }
-            onClick={() => setActivePage("upload")}
-          >
-            Upload Resumes
-          </button>
-
-          <button
-            className="nav-btn"
-            onClick={() => {
-              localStorage.removeItem("isAuthenticated");
-              window.location.href = "/login";
-            }}
-          >
+          <button onClick={() => (window.location.href = "/login")}>
             Logout
           </button>
         </div>
-      </header>
+      </nav>
 
-      <main className="dashboard-content">
-        {/* ================= STATS ================= */}
-        <div className="dashboard-stats">
-          <div className="stat-card">
-            <h4>Last Search</h4>
-            <p>{query || "—"}</p>
-          </div>
+      {/* Hidden File Input */}
+      <input
+        type="file"
+        accept=".pdf"
+        multiple
+        hidden
+        ref={fileInputRef}
+        onChange={handleUpload}
+      />
 
-          <div className="stat-card">
-            <h4>Matches Found</h4>
-            <p>{searchResults.length}</p>
+      {/* ================= HERO ================= */}
+      <section
+        className="dashboard-hero fade-in"
+        style={{ backgroundImage: `url(${heroBg})` }}
+      >
+        <div className="hero-overlay"></div>
+
+        <div className="hero-content">
+          <h1>Find the Right Talent Faster</h1>
+
+          <div className="hero-search-card">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="e.g. react, node"
+            />
+
+            <select
+              value={selectedExperience}
+              onChange={(e) => setSelectedExperience(e.target.value)}
+            >
+              <option value="">Experience</option>
+              <option value="0-1">0 - 1</option>
+              <option value="1-3">1 - 3</option>
+              <option value="3-5">3 - 5</option>
+              <option value="5-7">5 - 7</option>
+            </select>
+
+            <button onClick={handleSearch}>
+              Search Candidates
+            </button>
           </div>
         </div>
+      </section>
 
-        {/* ================= DASHBOARD PAGE ================= */}
-        {activePage === "dashboard" && (
-          <>
-            <div className="query-box">
-              <p className="query-hint">
-                👋 Enter your hiring requirement
-              </p>
+      {/* ================= METRICS ================= */}
+      <section className="metrics-section fade-up">
+        <div className="metric-card">
+          <h4>Total Matches</h4>
+          <p>{animatedCount}</p>
+        </div>
+      </section>
 
-              <div className="query-input">
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && handleSearch()
-                  }
-                  placeholder="Type skills (comma separated)"
-                />
-
-                <select
-                  className="experience-dropdown"
-                  value={selectedExperience}
-                  onChange={(e) =>
-                    setSelectedExperience(e.target.value)
-                  }
-                >
-                  <option value="">Experience</option>
-                  <option value="0-1">0 - 1 years</option>
-                  <option value="1-2">1 - 2 years</option>
-                  <option value="2-3">2 - 3 years</option>
-                  <option value="3-5">3 - 5 years</option>
-                  <option value="5-7">5 - 7 years</option>
-                  <option value="7-10">7 - 10 years</option>
-                  <option value="10-15">10 - 15 years</option>
-                  <option value="15-20">15 - 20 years</option>
-                </select>
-
-                <button onClick={handleSearch}>
-                  Search
-                </button>
-              </div>
-            </div>
-
-            {searchMessage && (
-              <div className="empty-state">
-                <h3>{searchMessage}</h3>
-              </div>
-            )}
-
-            {searchResults.length > 0 && (
-              <div className="results">
-                <h3 className="table-title">
-                  Matched Resumes
-                </h3>
-
-                <table className="compact-table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Match %</th>
-                      <th>Resume</th>
-                      <th>Download</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {searchResults.map((resume) => (
-                      <tr key={resume.user_id}>
-                        <td>{resume.user_id}</td>
-                        <td>{resume.name}</td>
-                        <td>{resume.email}</td>
-                        <td>{resume.match_score}%</td>
-
-                        {/* VIEW IN SAME PAGE */}
-                        <td>
-                          <button
-                            className="view-btn"
-                            onClick={() =>
-                              setPreviewFile(
-                                `http://127.0.0.1:5000/resume/view/${resume.user_id}/${resume.resume_url}`
-                              )
-                            }
-                          >
-                            View
-                          </button>
-                        </td>
-
-                        {/* FORCE DOWNLOAD */}
-                        <td>
-                          <a
-                            href={`http://127.0.0.1:5000/resume/download/${resume.user_id}/${resume.resume_url}`}
-                          >
-                            ⬇
-                          </a>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ================= UPLOAD PAGE ================= */}
-        {activePage === "upload" && (
-          <div className="upload-section">
-            <input
-              type="file"
-              accept=".pdf"
-              multiple
-              hidden
-              id="uploadInput"
-              onChange={handleFileUpload}
-            />
-            <label
-              htmlFor="uploadInput"
-              className="upload-btn"
-            >
-              📄 Upload Resumes
-            </label>
+      {/* ================= RESULTS ================= */}
+      <section className="results-section fade-up">
+        {searchMessage && (
+          <div className="empty-state">
+            <h3>{searchMessage}</h3>
           </div>
         )}
-      </main>
+
+        {searchResults.length > 0 && (
+          <div className="results-container">
+            <h3>Matched Resumes</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Experience</th>
+                  <th>Match %</th>
+                  <th>View</th>
+                  <th>Download</th>
+                </tr>
+              </thead>
+              <tbody>
+                {searchResults.map((resume) => (
+                  <tr key={resume.user_id}>
+                    <td>{resume.name}</td>
+                    <td>{resume.email}</td>
+                    <td>{resume.experience} yrs</td>
+                    <td>{resume.match_score}%</td>
+                    <td>
+                      <button
+                        onClick={() => setPreviewFile(resume.fileURL)}
+                      >
+                        View
+                      </button>
+                    </td>
+                    <td>
+                      <a href={resume.fileURL} download>
+                        ⬇
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {/* ================= MODAL ================= */}
       {previewFile && (
         <div className="modal-overlay">
-          <div className="modal-content large-preview">
-            <div className="modal-header">
-              <span>Resume Preview</span>
-              <button onClick={() => setPreviewFile(null)}>
-                ✖
-              </button>
-            </div>
-
-            <iframe
-              src={previewFile}
-              title="Resume Preview"
-              className="resume-frame"
-            />
+          <div className="modal-content">
+            <button
+              className="close-btn"
+              onClick={() => setPreviewFile(null)}
+            >
+              ✖
+            </button>
+            <iframe src={previewFile} title="Resume Preview" />
           </div>
         </div>
       )}
