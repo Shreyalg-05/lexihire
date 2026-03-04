@@ -1,7 +1,7 @@
 from db.database import Database
 import json
 import os
-
+import re
 
 class SearchEngine:
 
@@ -32,37 +32,20 @@ class SearchEngine:
             base_params.append(f"%{name}%")
 
         # 🔹 Experience filter (interval-based: 3-5 → >=3 AND <5)
-        if experience and "-" in experience:
-            min_exp, max_exp = experience.split("-")
-            min_exp = float(min_exp)
-            max_exp = float(max_exp)
-
-            base_sql += " AND u.experience >= %s AND u.experience < %s"
-            base_params.extend([min_exp, max_exp])
+        if experience:
+            if "-" in experience:
+                min_exp, max_exp = experience.split("-")
+                base_sql += " AND u.experience >= %s AND u.experience <= %s"
+                base_params.extend([float(min_exp), float(max_exp)])
+            else:
+                base_sql += " AND u.experience >= %s"
+                base_params.append(float(experience))
 
         results = []
-
         # ==========================
-        # 1️⃣ SEARCH IN SKILLS COLUMN
+        # 1️⃣ PRIMARY SEARCH → METADATA
         # ==========================
         if skills:
-            skill_list = [s.strip().lower() for s in skills.split(",")]
-            skill_conditions = []
-            params = base_params.copy()
-
-            for skill in skill_list:
-                skill_conditions.append("LOWER(u.skills) LIKE %s")
-                params.append(f"%{skill}%")
-
-            skills_sql = base_sql + " AND (" + " OR ".join(skill_conditions) + ")"
-
-            cursor.execute(skills_sql, params)
-            results = cursor.fetchall()
-
-        # ==========================
-        # 2️⃣ FALLBACK → METADATA
-        # ==========================
-        if skills and not results:
             metadata_conditions = []
             params = base_params.copy()
 
@@ -77,11 +60,26 @@ class SearchEngine:
             cursor.execute(metadata_sql, params)
             results = cursor.fetchall()
 
+        # ==========================
+        # 2️⃣ FALLBACK → SKILLS COLUMN
+        # ==========================
+        if skills and not results:
+            skill_list = [s.strip().lower() for s in skills.split(",")]
+            skill_conditions = []
+            params = base_params.copy()
+
+            for skill in skill_list:
+                skill_conditions.append("LOWER(u.skills) LIKE %s")
+                params.append(f"%{skill}%")
+
+            skills_sql = base_sql + " AND (" + " OR ".join(skill_conditions) + ")"
+
+            cursor.execute(skills_sql, params)
+            results = cursor.fetchall()
         cursor.close()
         conn.close()
 
         return SearchEngine._rank(results, skills)
-
     # ==========================
     # 🔥 RANKING FUNCTION
     # ==========================
@@ -115,27 +113,32 @@ class SearchEngine:
             # Parse metadata safely
             metadata_raw = c.get("metadata", "{}")
 
-            if isinstance(metadata_raw, str):
-                metadata = json.loads(metadata_raw)
-            else:
-                metadata = metadata_raw or {}
+            try:
+                if isinstance(metadata_raw, str):
+                    metadata = json.loads(metadata_raw)
+                else:
+                    metadata = metadata_raw or {}
+            except Exception:
+                metadata = {}
 
-            skill_block = metadata.get("skills", {})
+            sections = metadata.get("sections", {})
+            skill_lines = sections.get("skills", [])
 
-            candidate_skills = set(
-                skill_block.get("canonical", []) +
-                skill_block.get("languages", []) +
-                skill_block.get("tools", [])
-            )
+            candidate_skills = set()
 
-            candidate_skills = {s.lower() for s in candidate_skills}
+            for line in skill_lines:
+                parts = re.split(r"[,:]", line)
+                for p in parts:
+                    skill = p.strip().lower()
+                    if skill:
+                        candidate_skills.add(skill)
 
             # 🔥 Skill match score
             matched = len(query_skills & candidate_skills)
             skill_score = (matched / total_query) * 100 if total_query > 0 else 0
 
             # 🔥 Experience boost (max 20%)
-            experience = c.get("experience", 0)
+            experience = float(c.get("experience") or 0)
             experience_boost = min(experience * 2, 20)
 
             final_score = min(skill_score + experience_boost, 100)
@@ -143,8 +146,9 @@ class SearchEngine:
             c["match_score"] = round(final_score, 2)
 
             # 🔥 IMPORTANT → Fix resume filename
-            if c.get("resume_url"):
-                c["resume_url"] = os.path.basename(c["resume_url"])
+            resume_path = c.get("resume_url")
+            if resume_path:
+                c["resume_url"] = os.path.basename(str(resume_path))
 
             # Remove internal fields before sending to frontend
             c.pop("skills", None)

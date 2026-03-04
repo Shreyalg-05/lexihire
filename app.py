@@ -7,7 +7,9 @@ import os
 
 app = Flask(__name__)
 CORS(app)
-
+ALLOWED_EXTENSIONS = {"pdf", "docx", "doc"}
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # ==================================================
 # RESUME UPLOAD
@@ -16,20 +18,35 @@ CORS(app)
 def upload_resume():
     print("UPLOAD ROUTE HIT")
 
-    files = request.files.getlist("resume") or request.files.getlist("file")
+    files = request.files.getlist("resume")
 
     if not files:
         return jsonify({"error": "at least one resume file required"}), 400
-
+    seen = set()
+    files = [f for f in files if not (f.filename in seen or seen.add(f.filename))]
     results = []
 
     for file in files:
-        result = ResumeEngine.upload_resume(file)
+        if not allowed_file(file.filename):
+            results.append({
+                "filename": file.filename,
+                "error": "Unsupported file type"
+            })
+            continue
+
+        try:
+            result = ResumeEngine.upload_resume(file)
+        except Exception as e:
+            result = {
+                "filename": file.filename,
+                "error": str(e)
+            }
+
         results.append(result)
 
     return jsonify({
         "message": "Resumes uploaded successfully",
-        "uploaded_count": len(results),
+        "uploaded_count": sum(1 for r in results if "user_id" in r),
         "results": results
     })
 
@@ -37,8 +54,10 @@ def upload_resume():
 # ==================================================
 # VIEW RESUME (INLINE DISPLAY)
 # ==================================================
+from werkzeug.utils import secure_filename
 @app.route("/resume/view/<int:user_id>/<filename>")
 def view_resume(user_id, filename):
+    filename = secure_filename(filename)
     folder = os.path.join("uploads", "resumes", str(user_id))
     return send_from_directory(folder, filename)
 
@@ -48,12 +67,9 @@ def view_resume(user_id, filename):
 # ==================================================
 @app.route("/resume/download/<int:user_id>/<filename>")
 def download_resume(user_id, filename):
+    filename = secure_filename(filename)
     folder = os.path.join("uploads", "resumes", str(user_id))
-    return send_from_directory(
-        folder,
-        filename,
-        as_attachment=True  # 🔥 Forces download
-    )
+    return send_from_directory(folder, filename)
 
 
 # ==================================================
@@ -102,9 +118,11 @@ def view_shortlist():
     result = ShortlistEngine.get_shortlisted()
     return jsonify(result)
 
-
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
 # ==================================================
 # RUN APP
 # ==================================================
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5000)

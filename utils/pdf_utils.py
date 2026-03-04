@@ -1,16 +1,14 @@
 import pdfplumber
 
+
 def extract_full_text(file_path):
-    text = ""
+    full_text = []
 
     with pdfplumber.open(file_path) as pdf:
         for page in pdf.pages:
-            page_text = page.extract_text(
-                x_tolerance=2,
-                y_tolerance=2
-            )
+            text = page.extract_text(layout=True)
 
-            if page_text:
-                text += page_text + "\n"
+            if text:
+                full_text.append(text)
 
-    return text.strip()
+    return "\n".join(full_text).strip()

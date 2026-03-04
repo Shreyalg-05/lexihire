@@ -11,5 +11,5 @@ def extract_sentences(text: str):
     return [
         sent.text.strip()
         for sent in doc.sents
-        if 8 <= len(sent.text.strip()) <= 400
+        if len(sent.text.strip()) >= 20  # 🔥 better threshold
     ]
