@@ -35,7 +35,6 @@ export default function Dashboard() {
       }
 
       const response = await fetch(url);
-
       const data = await response.json();
 
       if (data.length === 0) {
@@ -51,29 +50,6 @@ export default function Dashboard() {
       console.error(error);
       setSearchMessage("Server error.");
     }
-  };
-
-    const dummyResults = [
-      {
-        user_id: 1,
-        name: "Candidate 1",
-        email: "candidate1@gmail.com",
-        skills: ["react", "node"],
-        experience: 4,
-        fileURL: "/sample-resume.pdf"
-      },
-      {
-        user_id: 2,
-        name: "Candidate 2",
-        email: "candidate2@gmail.com",
-        skills: ["python", "ml"],
-        experience: 5,
-        fileURL: "/sample-resume.pdf"
-      }
-    ];
-
-    setSearchResults(dummyResults);
-    setSearchMessage("");
   };
 
   const handleLogout = () => {
@@ -185,20 +161,14 @@ export default function Dashboard() {
 
                     <div className="skill-tags">
 
-                      {resume.skills.slice(0,4).map((skill, index) => (
-                        <span key={index}>{skill}</span>
+                      {(resume.skills || "").split(",").slice(0,4).map((skill, index) => (
+                        <span key={index}>{skill.trim()}</span>
                       ))}
 
-                      {resume.skills.length > 4 && (
-                        <span className="more-skills">
-                          +{resume.skills.length - 4} more
-                        </span>
-                      )}
-
-                      </div>
+                    </div>
 
                     <div className="exp">
-                      {resume.experience} yrs experience
+                      {resume.match_score}% match
                     </div>
 
                     <a
@@ -246,5 +216,4 @@ export default function Dashboard() {
     </div>
 
   );
-
 }

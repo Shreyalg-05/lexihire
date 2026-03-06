@@ -1,29 +1,37 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import "../styles/dashboard.css";
+import heroBg from "../assets/dash-bg.jpg";
 
 export default function Upload() {
 
-  const [files, setFiles] = useState([]);
-  const [message, setMessage] = useState("");
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  const fileInputRef = useRef(null);
 
-  const handleFileChange = (e) => {
-    setFiles([...e.target.files]);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  const handleFileSelect = () => {
+    fileInputRef.current.click();
   };
 
-  const handleUpload = async () => {
+  const handleFileChange = async (e) => {
 
-    if (files.length === 0) {
-      setMessage("Please select resume files.");
-      return;
-    }
+    const file = e.target.files[0];
+
+    if (!file) return;
 
     const formData = new FormData();
-
-    files.forEach(file => {
-      formData.append("resume", file);
-    });
+    formData.append("resume", file);
 
     try {
+
+      setLoading(true);
+      setError("");
+      setResult(null);
 
       const response = await fetch(
         "http://localhost:5000/resume/upload",
@@ -35,19 +43,27 @@ export default function Upload() {
 
       const data = await response.json();
 
+      setLoading(false);
+
       if (response.ok) {
-        setMessage(data.message);
+        setResult(data);
       } else {
-        setMessage(data.error || "Upload failed.");
+        setError(data.error || "Upload failed.");
       }
 
-    } catch (error) {
-      console.error(error);
-      setMessage("Server error.");
+    } catch (err) {
+      setLoading(false);
+      setError("Server error.");
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
+
     <div className="dashboard-wrapper">
 
       {/* NAVBAR */}
@@ -58,15 +74,15 @@ export default function Upload() {
 
         <div className="nav-links">
 
-          <button onClick={() => window.location.href="/dashboard"}>
+          <button onClick={() => navigate("/dashboard")}>
             Dashboard
           </button>
 
-          <button onClick={() => window.location.href="/upload"}>
+          <button onClick={() => navigate("/upload")}>
             Upload
           </button>
 
-          <button onClick={() => window.location.href="/login"}>
+          <button onClick={handleLogout}>
             Logout
           </button>
 
@@ -74,32 +90,85 @@ export default function Upload() {
 
       </nav>
 
-      {/* UPLOAD SECTION */}
 
-      <section className="results-section">
+      {/* HERO */}
 
-        <div className="results-container">
+      <section
+        className="dashboard-hero"
+        style={{ backgroundImage: `url(${heroBg})` }}
+      >
 
-          <h3>Upload Resumes</h3>
+        <div className="hero-overlay"></div>
 
-          <input
-            type="file"
-            multiple
-            accept=".pdf,.doc,.docx"
-            onChange={handleFileChange}
-          />
+        <div className="hero-content">
 
-          <br /><br />
+          <h1>Upload Candidate Resumes</h1>
 
-          <button onClick={handleUpload}>
-            Upload Resume
-          </button>
+          <div className="hero-search-card">
 
-          {message && (
-            <p style={{marginTop:"20px"}}>
-              {message}
-            </p>
-          )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+
+            {!loading && !result && (
+
+              <button onClick={handleFileSelect}>
+                Upload Resume
+              </button>
+
+            )}
+
+            {loading && (
+
+              <div className="upload-loading">
+                <div className="loader"></div>
+                <p>Parsing resume...</p>
+              </div>
+
+            )}
+
+            {result && (
+
+              <div className="upload-success-card">
+
+                <div className="success-check">✔</div>
+
+                <h3>Resume Parsed Successfully</h3>
+
+                <div className="parsed-info">
+
+                  <p>
+                    <strong>Candidate ID:</strong> {result.user_id}
+                  </p>
+
+                  <p>
+                    <strong>Resume:</strong> {result.resume_filename}
+                  </p>
+
+                </div>
+
+                <button
+                  className="view-dashboard-btn"
+                  onClick={() => navigate("/dashboard")}
+                >
+                  View Candidates
+                </button>
+
+              </div>
+
+            )}
+
+            {error && (
+              <p className="upload-error">
+                {error}
+              </p>
+            )}
+
+          </div>
 
         </div>
 
